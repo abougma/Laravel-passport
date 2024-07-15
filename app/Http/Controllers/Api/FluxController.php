@@ -70,7 +70,7 @@ class FluxController extends Controller
         ]);
 
         $seance->enseignants()->attach($validateData['enseignants']);
-        $seance->apprenants()->sygnc($validateData['apprenants']);
+        $seance->apprenants()->sync($validateData['apprenants']);
 
         return response()->json([
             'message' => 'Séance créée avec succès',
