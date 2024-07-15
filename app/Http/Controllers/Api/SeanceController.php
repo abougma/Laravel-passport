@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-<<<<<<< HEAD
 use App\Http\Resources\ApprenantResource;
 use App\Http\Resources\EmargementResource;
 use App\Http\Resources\EnseignantResource;
@@ -18,11 +17,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Log;
-=======
-use App\Models\Seance;
-use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
->>>>>>> 491d98493b85d953d9f9ccb5fab06146e34ef305
 
 class SeanceController extends Controller
 {
@@ -40,7 +34,6 @@ class SeanceController extends Controller
      * Store a newly created resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-<<<<<<< HEAD
      * @return \Illuminate\Http\JsonResponse
      */
 
@@ -378,29 +371,6 @@ class SeanceController extends Controller
     }
 
 
-=======
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'intitule' => 'required|string|max:255',
-            'dabte_debut' => 'required',
-            'date_fin' => 'required',
-        ]);
-
-        $dateDebut = Carbon::parse($request->date_debut)->timestamp;
-        $dateFin = Carbon::parse($request->date_fin)->timestamp;
-
-        $seance = Seance::create([
-            'intitule' => $request->intitule,
-            'dabte_debut' => $dateDebut,
-            'date_fin' => $dateFin
-        ]);
-        return response()->json(['message' => 'seance creer avec succès', 'seance' => $seance],201);
-    }
-
->>>>>>> 491d98493b85d953d9f9ccb5fab06146e34ef305
     /**
      * Display the specified resource.
      *

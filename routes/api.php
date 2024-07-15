@@ -1,9 +1,7 @@
 <?php
 
-<<<<<<< HEAD
 use App\Http\Controllers\Api\FluxController;
-=======
->>>>>>> 491d98493b85d953d9f9ccb5fab06146e34ef305
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\SeanceController;
@@ -23,7 +21,7 @@ use App\Http\Controllers\Api\SeanceController;
   //  return $request->user();
 //});
 
-<<<<<<< HEAD
+
 Route::post('/seance', [SeanceController::class, 'createSeanceWithApprenantAndEnseignant'])->middleware('client');
 Route::post('/seances', [SeanceController::class, 'createSeances'])->middleware('client');
 Route::get('/get/seances/{id}',[SeanceController::class, 'getSeance'])->middleware('client');
@@ -77,8 +75,8 @@ Route::middleware('client', 'getClient')->group(function (){
 
     Route::delete('/delete/apprenant/{apprenant_id}/seance/{seance_id}', [FluxController::class, 'deleteApprenantSeance']);
 });
-=======
+
 Route::post('/seance', [SeanceController::class, 'store'])->middleware('client');
 
 //Route::middleware('client')->post('/seance', [SeanceController::class, 'store']);
->>>>>>> 491d98493b85d953d9f9ccb5fab06146e34ef305
+
