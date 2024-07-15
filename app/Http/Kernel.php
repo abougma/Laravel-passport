@@ -64,9 +64,6 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'client' => \Laravel\Passport\Http\Middleware\CheckClientCredentials::class,
-<<<<<<< HEAD
         'getClient' => \App\Http\Middleware\GetClientMiddleware::class,
-=======
->>>>>>> 491d98493b85d953d9f9ccb5fab06146e34ef305
     ];
 }
