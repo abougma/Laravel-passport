@@ -22,8 +22,10 @@ class SeanceResource extends JsonResource
             'date_fin' => $this->date_fin,
             'duration' => $this->duration,
             'seance_id_externe' => $this->seance_id_externe,
-            'apprenants' => ApprenantResource::collection($this->apprenants),
-            'enseignant' => EnseignantResource::collection($this->enseignant),
+            'source_name' => $this->source_name,
+            'source_id' => $this->source_id
+            //'apprenants' => ApprenantResource::collection($this->apprenants),
+            //'enseignant' => EnseignantResource::collection($this->enseignant),
         ];
     }
 }

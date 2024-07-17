@@ -16,8 +16,11 @@ class ApprenantResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'ine' => $this->ine,
             'nom' => $this->nom,
             'prenom' => $this->prenom,
+            'source_name' => $this->source_name,
+            'source_id' => $this->source_id
         ];
     }
 }

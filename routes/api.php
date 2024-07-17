@@ -45,38 +45,37 @@ Route::get('/data/apprenant/{apprenant_id}', [SeanceController::class, 'getAppre
 
 Route::middleware('client', 'getClient')->group(function (){
     //Séances
-    Route::post('/create/seance', [FluxController::class, 'createSeance']);
-    Route::post('/create/seances', [FluxController::class, 'createSeances']);
+    Route::post('/seance', [FluxController::class, 'createSeance']);
+    Route::post('/seances', [FluxController::class, 'createSeances']);
 
-    Route::get('/get/seance/{seance_id}', [FluxController::class, 'getSeance']);
-    Route::get('/get/seances', [FluxController::class, 'getSeances']);
-    Route::get('/get/seances/{seance_id}/enseignants/apprenants', [FluxController::class, 'getSeanceAndEnseignantAndApprenants']);
+    Route::get('/seance/{seance_id}', [FluxController::class, 'getSeance']);
+    Route::get('/seances', [FluxController::class, 'getSeances']);
+    Route::get('/seances/{seance_id}/enseignants/apprenants', [FluxController::class, 'getSeanceAndEnseignantAndApprenants']);
 
-    Route::delete('/delete/seance/{seance_id}', [FluxController::class, 'deleteSeance']);
+    Route::delete('/seance/{seance_id}', [FluxController::class, 'deleteSeance']);
 
     //Enseignants
-    Route::post('/create/enseignant', [FluxController::class, 'createEnseignant']);
+    Route::post('/enseignant', [FluxController::class, 'createEnseignant']);
+    Route::post('/enseignants', [FluxController::class, 'createEnseignants']);
 
-    Route::get('/get/enseignant/{enseignant_id}', [FluxController::class, 'getEnseignant']);
-    Route::get('/get/enseignant/seance/{seance_id}', [FluxController::class, 'getEnseignantAssociateSeance']);
-    Route::get('/get/seance/enseignant/{enseignant_id}', [FluxController::class, 'getSeanceAssociateEnseigne']);
+    Route::get('/enseignant/{enseignant_id}', [FluxController::class, 'getEnseignant']);
+    Route::get('/enseignants', [FluxController::class, 'getEnseignants']);
+    Route::get('/enseignant/seance/{seance_id}', [FluxController::class, 'getEnseignantAssociateSeance']);
+    Route::get('/seance/enseignant/{enseignant_id}', [FluxController::class, 'getSeanceAssociateEnseigne']);
 
+    Route::delete('/enseignant/{enseignant_id}', [FluxController::class, 'deleteEnseignant']);
 
-    Route::delete('/delete/enseignant/{enseignant_id}', [FluxController::class, 'deleteEnseignant']);
-
-    Route::delete('/delete/enseignant/{enseignant_id}/seance/{seance_id}', [FluxController::class, 'deleteEnseignantSeance']);
+    Route::delete('/enseignant/{enseignant_id}/seance/{seance_id}', [FluxController::class, 'deleteEnseignantSeance']);
 
     //Apprenants
-    Route::post('/create/apprenant', [FluxController::class, 'createApprenant']);
+    Route::post('/apprenant', [FluxController::class, 'createApprenant']);
+    Route::post('/apprenants', [FluxController::class, 'createApprenants']);
 
-    Route::get('/get/apprenant/{apprenant_id}', [FluxController::class, 'getApprenant']);
-    Route::get('/get/seance/{seance_id}/apprenant', [FluxController::class, 'getSeanceAssociateApprenant']);
-    Route::get('/get/apprenant/{apprenant_id}/seance', [FluxController::class, 'getApprenantAssociateSeance']);
+    Route::get('/apprenant/{apprenant_id}', [FluxController::class, 'getApprenant']);
+    Route::get('/apprenants', [FluxController::class, 'getApprenants']);
+    Route::get('/seance/{seance_id}/apprenant', [FluxController::class, 'getSeanceAssociateApprenant']);
+    Route::get('/apprenant/{apprenant_id}/seance', [FluxController::class, 'getApprenantAssociateSeance']);
 
-    Route::delete('/delete/apprenant/{apprenant_id}/seance/{seance_id}', [FluxController::class, 'deleteApprenantSeance']);
+    Route::delete('/apprenant/{apprenant_id}/seance/{seance_id}', [FluxController::class, 'deleteApprenantSeance']);
+    Route::delete('/apprenant/{apprenant_id}', [FluxController::class, 'deleteApprenants']);
 });
-
-Route::post('/seance', [SeanceController::class, 'store'])->middleware('client');
-
-//Route::middleware('client')->post('/seance', [SeanceController::class, 'store']);
-

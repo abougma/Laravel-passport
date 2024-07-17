@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ApprenantResource;
+use App\Http\Resources\EnseignantResource;
+use App\Http\Resources\SeanceResource;
 use App\Models\Apprenant;
 use App\Models\Enseignant;
 use App\Models\Seance;
@@ -31,50 +34,48 @@ class FluxController extends Controller
             'enseignant_id' => 'integer|exists:enseignants,id',
             'apprenants' => 'required|array',
             'apprenants.*' => 'integer|exists:apprenants,id',
-            'source_id' => 'required|integer'
+            'id' => 'required|integer'
         ]);
 
         $sourceName = $request->get('source_name');
-        $sourceId = $validateData['source_id'];
-        //dd($sourceName, $sourceId);
+        $sourceId = $validateData['id'];
+
+        $existeSeance = Seance::where('source_name',$sourceName)
+                    ->where('source_id', $sourceId)
+                    ->first();
+        //dd($existeSeance);
+
+        if ($existeSeance){
+            return response()->json([
+                'message' => 'Séance existe déjà',
+            ], 403);
+        }
 
         $dateDebut = Carbon::parse($validateData['date_debut'])->timestamp;
         $dateFin = Carbon::parse($validateData['date_fin'])->timestamp;
 
-        $existSeance = Seance::where([
-            'intitule' => $validateData['intitule'],
-            'matiere_id' => $validateData['matiere_id'],
-            'dabte_debut' => $dateDebut,
-            'date_fin' => $dateFin,
-            'duration' => $validateData['duration'],
-            'seance_id_externe' => $validateData['seance_id_externe'],
-            'source_name' => $sourceName,
-            'source_id' => $sourceId
-        ])->first();
-
-        if ($existSeance) {
-            return response()->json([
-                'error' => 'Cette séance existe déjà'
-            ], 400);
-        }
-
-        $seance = Seance::updateOrCreate([
-            'intitule' => $validateData['intitule'],
-            'matiere_id' => $validateData['matiere_id'],
-            'dabte_debut' => $dateDebut,
-            'date_fin' => $dateFin,
-            'duration' => $validateData['duration'],
-            'seance_id_externe' => $validateData['seance_id_externe'],
-            'source_name' => $sourceName,
-            'source_id' => $sourceId
-        ]);
+        $seance = Seance::updateOrCreate(
+            [
+                'intitule' => $validateData['intitule'],
+                'matiere_id' => $validateData['matiere_id'],
+                'dabte_debut' => $dateDebut,
+                'date_fin' => $dateFin,
+                'duration' => $validateData['duration'],
+                'seance_id_externe' => $validateData['seance_id_externe']
+            ],
+            [
+                'source_name' => $sourceName,
+                'source_id' => $sourceId,
+            ]
+        );
 
         $seance->enseignants()->attach($validateData['enseignants']);
         $seance->apprenants()->sync($validateData['apprenants']);
 
+        $seanceRessource =  new SeanceResource($seance);
         return response()->json([
             'message' => 'Séance créée avec succès',
-            'seance' => $seance
+            'seance' => $seanceRessource
         ], 201);
     }
 
@@ -94,7 +95,7 @@ class FluxController extends Controller
             'seances.*.duration' => 'required|integer',
             'seances.*.seance_id_externe' => 'required|string',
             'seances.*.matiere_id' => 'required|integer',
-            'seances.*.source_id' => 'required|integer',
+            'seances.*.id' => 'required|integer',
             'seances.*.enseignant_id' => 'required|integer|exists:enseignants,id',
             'seances.*.apprenants' => 'required|array',
             'seances.*.apprenants.*' => 'integer|exists:apprenants,id'
@@ -105,29 +106,24 @@ class FluxController extends Controller
         foreach ($validateData['seances'] as $seanceData) {
 
             $sourceName = $request->get('source_name');
-            $sourceId = $seanceData['source_id'];
+            $sourceId = $seanceData['id'];
 
             $dateDebut = Carbon::parse($seanceData['date_debut'])->timestamp;
             $dateFin = Carbon::parse($seanceData['date_fin'])->timestamp;
 
-            $existSeance = Seance::where([
-                'intitule' => $seanceData['intitule'],
-                'matiere_id' => $seanceData['matiere_id'],
-                'dabte_debut' => $dateDebut,
-                'date_fin' => $dateFin,
-                'duration' => $seanceData['duration'],
-                'seance_id_externe' => $seanceData['seance_id_externe'],
-                'source_name' => $sourceName,
-                'source_id' => $sourceId
-            ])->first();
+            $existSeance = Seance::where('source_name', $sourceName)
+                                ->where('source_id', $sourceId)
+                                ->first();
             if ($existSeance) {
                 return response()->json([
                     'error' => 'Une ou plusieurs séances existe déjà'
-                ], 400);
+                ], 403);
             }
 
             $seance = Seance::updateOrCreate(
                 [
+                    'intitule' => $seanceData['intitule'],
+                    'duration' => $seanceData['duration'],
                     'seance_id_externe' => $seanceData['seance_id_externe'],
                     'matiere_id' => $seanceData['matiere_id'],
                     'dabte_debut' => $dateDebut,
@@ -135,9 +131,8 @@ class FluxController extends Controller
                     'source_id' => $sourceId
                 ],
                 [
-                    'intitule' => $seanceData['intitule'],
-                    'duration' => $seanceData['duration'],
                     'source_name' => $sourceName,
+                    'source_id' => $sourceId
                 ]
             );
 
@@ -147,9 +142,10 @@ class FluxController extends Controller
             $createdSeances[] = $seance;
         }
 
+        $seanceRessource = SeanceResource::collection($createdSeances);
         return response()->json([
-            'message' => 'Séances créées avec succès',
-            'seances' => $createdSeances
+            'error' => 'Séances créées avec succès',
+            'seances' => $seanceRessource
         ], 201);
     }
 
@@ -161,15 +157,17 @@ class FluxController extends Controller
 
     public function getSeance($seance_id)
     {
-        $seance = Seance::findOrFail($seance_id);
+        $seance = Seance::find($seance_id);
 
         if (!$seance){
             return response()->json([
                 'error' => 'Aucune séance ne correspond'
             ],400);
         }
+
+        $seanceRessource = new SeanceResource($seance);
         return response()->json([
-            'seance' => $seance
+            'seance' => $seanceRessource
         ],200);
     }
 
@@ -181,7 +179,7 @@ class FluxController extends Controller
 
     public function getSeanceAndEnseignantAndApprenants($seance_id)
     {
-        $seance = Seance::with('enseignants', 'apprenants')->findOrFail($seance_id);
+        $seance = Seance::with('enseignants', 'apprenants')->find($seance_id);
         return response()->json([
             'seance' => $seance,
         ],200 );
@@ -196,14 +194,15 @@ class FluxController extends Controller
     public function getSeances()
     {
         $seances = Seance::get();
-
         if (!$seances){
             return response()->json([
                 'error' => 'Aucune seances existante'
             ], 400);
         }
+
+        $seanceRessource = SeanceResource::collection($seances);
         return response()->json([
-            'seances' => $seances
+            'seances' => $seanceRessource
         ], 201);
     }
 
@@ -215,7 +214,7 @@ class FluxController extends Controller
 
     public function deleteSeance($seance_id)
     {
-        $seance = Seance::findOrFail($seance_id);
+        $seance = Seance::find($seance_id);
         if (!$seance){
             return response()->json([
                 'error' => 'Aucune séance ne correspond'
@@ -225,7 +224,7 @@ class FluxController extends Controller
 
         return response()->json([
             'message' => 'Séance supprimer avec succès'
-        ], 201);
+        ], 200);
     }
 
 
@@ -237,23 +236,21 @@ class FluxController extends Controller
      * Création d'un enseignant
      */
     public function createEnseignant (Request $request){
+
         $validateData = $request->validate([
             'nom' => 'required|string',
             'prenom' => 'required|string',
             'email' => 'required|string',
-            'source_id' => 'required|string'
+            'id' => 'required|integer',
+            'enseignant_id_externe' => 'required|string'
         ]);
 
         $sourceName = $request->get('source_name');
-        $sourceId = $validateData['source_id'];
+        $sourceId = $validateData['id'];
 
-        $existEnseignant = Seance::where([
-            'nom' => $validateData['nom'],
-            'prenom' => $validateData['prenom'],
-            'email' => $validateData['email'],
-            'source_name' => $sourceName,
-            'source_id' => $sourceId
-        ])->first();
+        $existEnseignant = Enseignant::where('source_name', $sourceName)
+                        ->where('source_id', $sourceId)
+                        ->first();
 
         if ($existEnseignant){
             return response()->json([
@@ -261,19 +258,73 @@ class FluxController extends Controller
             ],400);
         }
 
-        $enseignant = Enseignant::updateOrCreate([
+        $enseignant = Enseignant::updateOrCreate(
+            [
             'nom' => $validateData['nom'],
             'prenom' => $validateData['prenom'],
             'email' => $validateData['email'],
-            'source_name' => $sourceName,
-            'source_id' => $sourceId
-        ]);
+            'enseignant_id_externe' => $validateData['enseignant_id_externe']
+            ],
+            [
+                'source_name' => $sourceName,
+                'source_id' => $sourceId
+            ]
+        );
 
+        $enseignantRessource = new EnseignantResource($enseignant);
         return response()->json([
             'message' => 'Enseignant créer avec succès',
-            'enseignant' => $enseignant
+            'enseignant' => $enseignantRessource
 
         ], 201);
+    }
+
+
+    public function createEnseignants(Request $request)
+    {
+        $validateData = $request->validate([
+            'enseignants' => 'required|array',
+            'enseignants.*.nom' => 'required|string',
+            'enseignants.*.prenom' => 'required|string',
+            'enseignants.*.email' => 'required|string',
+            'enseignants.*.id' => 'required|integer',
+            'enseignants.*.enseignant_id_externe' => 'required|integer'
+        ]);
+
+        $createEnseignant = [];
+
+        foreach ($validateData['enseignants'] as $enseignantData){
+            $sourceName = $request->get('source_name');
+            $sourceId = $enseignantData['id'];
+
+            $existeEnseignant = Enseignant::where('source_name', $sourceName)
+                            ->where('source_id', $sourceId)
+                            ->first();
+
+            if ($existeEnseignant){
+                return response()->json([
+                    'message' => "Un ou plusieurs enseignants existe déjà",
+                ],403);
+            }
+
+            $enseignant = Enseignant::updateOrCreate(
+                [
+                'nom' => $enseignantData['nom'],
+                'prenom' => $enseignantData['prenom'],
+                'email' => $enseignantData['email'],
+                'enseignant_id_externe' => $enseignantData['enseignant_id_externe']
+                ],
+                [
+                    'source_name' => $sourceName,
+                    'source_id' => $sourceId
+                ]
+            );
+            $createEnseignant[] = $enseignant;
+        }
+        return response()->json([
+            'message' => 'Enseignant créer',
+            'enseignants' => $createEnseignant
+        ],201);
     }
 
     /**
@@ -283,17 +334,33 @@ class FluxController extends Controller
      */
     public function getEnseignant($enseignant_id)
     {
-        $enseignant = Enseignant::findOrFail($enseignant_id);
+        $enseignant = Enseignant::find($enseignant_id);
         if (!$enseignant){
             return response()->json([
                 'error' => 'Enseignant non trouvé'
             ], 400);
         }
 
+        $enseignantRessource =  new EnseignantResource($enseignant);
         return response()->json([
             'message' => 'Enseignant récuperer avec succès',
-            'enseignant' => $enseignant
+            'enseignant' => $enseignantRessource
         ], 200);
+    }
+
+    public function getEnseignants(){
+        $enseignants = Enseignant::get();
+
+        if (!$enseignants){
+            return response()->json([
+                'error' => "Aucun enseignant disponible"
+            ], 403);
+        }
+
+        $enseignantRessource = EnseignantResource::collection($enseignants);
+        return response()->json([
+            'enseignant' => $enseignantRessource
+            ], 200);
     }
 
     /**
@@ -304,7 +371,7 @@ class FluxController extends Controller
 
     public function deleteEnseignant($enseignant_id)
     {
-        $enseignant = Enseignant::findOrFail($enseignant_id);
+        $enseignant = Enseignant::find($enseignant_id);
         if (!$enseignant){
             return response()->json([
                 'error' => 'Aucun enseignant ne correspond'
@@ -314,7 +381,7 @@ class FluxController extends Controller
 
         return response()->json([
             'message' => 'Enseignant supprimé avec succès'
-        ], 201);
+        ], 200);
     }
 
     /**
@@ -324,9 +391,9 @@ class FluxController extends Controller
      */
 
     public function getEnseignantAssociateSeance($seance_id){
-        $seance = Seance::with('enseignants')->findOrFail($seance_id);
+        $seance = Seance::with('enseignants')->find($seance_id);
         //$enseignants = $seance->enseignants;
-
+        //dd($enseignants);
         return response()->json([
             //'enseignants' => $enseignants,
             'seance' => $seance
@@ -341,7 +408,7 @@ class FluxController extends Controller
 
     public function getSeanceAssociateEnseigne($enseignant_id)
     {
-        $enseignant = Enseignant::with('seances')->findOrFail($enseignant_id);
+        $enseignant = Enseignant::with('seances')->find($enseignant_id);
         return response()->json([
             'enseignant' => $enseignant
         ],200);
@@ -356,8 +423,8 @@ class FluxController extends Controller
      */
     public function deleteEnseignantSeance($seance_id, $enseignant_id)
     {
-        $enseignant = Enseignant::findOrFail($enseignant_id);
-        $seance = Seance::findOrFail($seance_id);
+        $enseignant = Enseignant::find($enseignant_id);
+        $seance = Seance::find($seance_id);
 
         if (!$seance->enseignants->contains($enseignant)){
             return response()->json([
@@ -369,7 +436,6 @@ class FluxController extends Controller
             'message' => "Enseignant supprimer avec succès",
         ],201);
     }
-
 
     //Apprenants
 
@@ -386,20 +452,15 @@ class FluxController extends Controller
             'ine' => 'required|string',
             'prenom' => 'required|string',
             'email' => 'required|string',
-            'source_id' => 'required|integer'
+            'id' => 'required|integer'
         ]);
 
         $sourceName = $request->get('source_name');
-        $sourceId = $validateData['source_id'];
+        $sourceId = $validateData['id'];
 
-        $existeApprenant = Apprenant::where([
-            'nom' => $validateData['nom'],
-            'ine' => $validateData['ine'],
-            'prenom' => $validateData['prenom'],
-            'email' => $validateData['email'],
-            'source_name' => $sourceName,
-            'source_id' => $sourceId
-        ])->first();
+        $existeApprenant = Apprenant::where('source_name', $sourceName)
+                                ->where('source_id', $sourceId)
+                                ->first();
 
         if ($existeApprenant){
             return response()->json([
@@ -407,21 +468,73 @@ class FluxController extends Controller
             ], 400);
         }
 
-        $apprenant = Apprenant::updateOrCreate([
+        $apprenant = Apprenant::updateOrCreate(
+            [
             'nom' => $validateData['nom'],
             'ine' => $validateData['ine'],
             'prenom' => $validateData['prenom'],
-            'email' => $validateData['email'],
-            'source_name' => $sourceName,
-            'source_id' => $sourceId
-        ]);
+            'email' => $validateData['email']
+            ],
+            [
+                'source_name' => $sourceName,
+                'source_id' => $sourceId
+            ]
+        );
 
+        $apprenantRessource = new ApprenantResource($apprenant);
         return response()->json([
             'message' => 'Enseignant créer avec succès',
-            'enseignant' => $apprenant
+            'enseignant' => $apprenantRessource
         ],201);
 
     }
+
+    public function createApprenants(Request $request)
+    {
+        $validateData = $request->validate([
+            'apprenants' => 'required|array',
+            'apprenants.*.nom' => 'required|string',
+            'apprenants.*.prenom' => 'required|string',
+            'apprenants.*.ine' => 'required|string',
+            'apprenants.*.email' => 'required|string',
+            'apprenants.*.id' => 'required|exists:apprenants,id'
+        ]);
+
+        $createApprenant = [];
+
+        foreach ($validateData['apprenants'] as $apprenantData){
+            $sourceName = $request->get('source_name');
+            $sourceId = $apprenantData['id'];
+
+            $existApprenants = Apprenant::where('source_name', $sourceName)
+                ->where('source_id', $sourceId)
+                ->first();
+
+            if ($existApprenants){
+                return response()->json([
+                    'error' => 'Une ou plusieurs apprenants existe déjà'
+                ], 403);
+            }
+            $apprenants = Apprenant::updateOrCreate([
+                'nom' => $apprenantData['nom'],
+                'prenom' => $apprenantData['prenom'],
+                'ine' => $apprenantData['ine'],
+                'email' => $apprenantData['email'],
+                'id' => $apprenantData['id']
+            ],
+                [
+                    'source_name' => $sourceName,
+                    'source_id' =>$sourceId
+                ]);
+            $createApprenant [] = $apprenants;
+        }
+
+        return response()->json([
+            'message' => 'Apprenants créés avec succès',
+            'apprenants' => $createApprenant
+        ],201 );
+    }
+
 
     /**
      * @param $apprenant_id
@@ -431,18 +544,36 @@ class FluxController extends Controller
 
     public function getApprenant($apprenant_id)
     {
-        $apprenant = Enseignant::findOrFail($apprenant_id);
-
+        $apprenant = Enseignant::find($apprenant_id);
         if (!$apprenant){
             return response()->json([
                 'error' => 'Cet Apprenant ne correspond pas '
             ],400);
         }
 
+        $apprenantRessource =  new ApprenantResource($apprenant);
+
         return response()->json([
             'message' => 'Apprenant récuperer avec succès',
-            'apprenant' => $apprenant
+            'apprenant' => $apprenantRessource
         ],201);
+    }
+    public function getApprenants(Request $request)
+    {
+        $apprenants = Apprenant::all();
+        //dd($apprenants);
+
+        if ($apprenants->isEmpty()) {
+            return response()->json([
+                'error' => "Aucun apprenant disponible"
+            ], 404);
+        }
+
+        $apprenantRessource = ApprenantResource::collection($apprenants);
+        return response()->json([
+            'message' => "Liste des apprenants",
+            'apprenants' => $apprenantRessource
+        ], 200);
     }
 
     /**
@@ -453,7 +584,7 @@ class FluxController extends Controller
 
     public function getSeanceAssociateApprenant($seance_id)
     {
-        $seance = Seance::with('apprenants')->findOrFail($seance_id);
+        $seance = Seance::with('apprenants')->find($seance_id);
 
         if (!$seance){
             return response()->json([
@@ -475,7 +606,7 @@ class FluxController extends Controller
 
     public function getApprenantAssociateSeance($apprenant_id)
     {
-        $apprenant = Apprenant::with('seances')->findOrFail($apprenant_id);
+        $apprenant = Apprenant::with('seances')->find($apprenant_id);
         return response()->json([
             'message' => 'Apprenant bien récuperer',
             'apprenant'=> $apprenant
@@ -491,8 +622,8 @@ class FluxController extends Controller
 
     public function deleteApprenantSeance($seance_id, $apprenant_id)
     {
-        $seance = Seance::findOrFail($seance_id);
-        $apprenant = Apprenant::findOrFail($apprenant_id);
+        $seance = Seance::find($seance_id);
+        $apprenant = Apprenant::find($apprenant_id);
 
         if (!$seance->apprenants->contains($apprenant)){
             return response()->json([
@@ -507,4 +638,18 @@ class FluxController extends Controller
         ], 201);
     }
 
+    public function deleteApprenants($apprenant_id){
+        $apprenant = Apprenant::find($apprenant_id);
+        if (!$apprenant){
+            return response()->json([
+                'error' => "Apprenant non trouvé"
+            ],403);
+        }
+
+        $apprenant->delete();
+
+        return response()->json([
+            'message' => "Apprenant supprimer"
+        ],200);
+    }
 }

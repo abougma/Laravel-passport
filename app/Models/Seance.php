@@ -23,7 +23,7 @@ class Seance extends Model
         'source_id'
     ];
 
-    public function enseignants()
+    public function enseignant()
     {
         return $this->belongsToMany(Enseignant::class);
     }

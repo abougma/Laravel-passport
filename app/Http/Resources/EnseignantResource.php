@@ -19,6 +19,8 @@ class EnseignantResource extends JsonResource
             'nom' => $this->nom,
             'prenom' => $this->prenom,
             'email' => $this->email,
+            'source_name' => $this->source_name,
+            'source_id' => $this->source_id
         ];
     }
 }

@@ -32,6 +32,8 @@ class GetClientMiddleware
         try {
             $clientId = app(JwtParser::class)->parse($jeton)->claims()->get('aud')[0];
             $client = OauthClient::find($clientId);
+            $objet = null;
+            //dd($client, $jeton);
 
             if (!$client) {
                 $error = true;
