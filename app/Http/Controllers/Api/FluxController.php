@@ -9,9 +9,18 @@ use App\Http\Resources\SeanceResource;
 use App\Models\Apprenant;
 use App\Models\Enseignant;
 use App\Models\Seance;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
+
+/* Filtrer la suppression des seances en fonction de la source_id et la source_name
+
+ * Proposer une solution pour que quand j'envoie un apprenant a l'id 35000 de mon api a mon outils par exemple
+ * dans mon outils puisse savoir quelle est le compte utilisateur de cet apprenant,
+ * vu que chaque apprenant est lier a un compte utilisateur.
+ *
+ */
 class FluxController extends Controller
 {
     // Séances
@@ -39,17 +48,8 @@ class FluxController extends Controller
 
         $sourceName = $request->get('source_name');
         $sourceId = $validateData['id'];
+        //dd($sourceName);
 
-        $existeSeance = Seance::where('source_name',$sourceName)
-                    ->where('source_id', $sourceId)
-                    ->first();
-        //dd($existeSeance);
-
-        if ($existeSeance){
-            return response()->json([
-                'message' => 'Séance existe déjà',
-            ], 403);
-        }
 
         $dateDebut = Carbon::parse($validateData['date_debut'])->timestamp;
         $dateFin = Carbon::parse($validateData['date_fin'])->timestamp;
@@ -69,7 +69,7 @@ class FluxController extends Controller
             ]
         );
 
-        $seance->enseignants()->attach($validateData['enseignants']);
+        $seance->enseignant()->attach($validateData['enseignants']);
         $seance->apprenants()->sync($validateData['apprenants']);
 
         $seanceRessource =  new SeanceResource($seance);
@@ -85,6 +85,7 @@ class FluxController extends Controller
      * Création de plusieurs séances
      */
 
+    /*
     public function createSeances(Request $request)
     {
         $validateData = $request->validate([
@@ -101,53 +102,117 @@ class FluxController extends Controller
             'seances.*.apprenants.*' => 'integer|exists:apprenants,id'
         ]);
 
+        $sourceName = $request->get('source_name');
         $createdSeances = [];
 
         foreach ($validateData['seances'] as $seanceData) {
-
-            $sourceName = $request->get('source_name');
             $sourceId = $seanceData['id'];
 
             $dateDebut = Carbon::parse($seanceData['date_debut'])->timestamp;
             $dateFin = Carbon::parse($seanceData['date_fin'])->timestamp;
 
-            $existSeance = Seance::where('source_name', $sourceName)
-                                ->where('source_id', $sourceId)
-                                ->first();
-            if ($existSeance) {
-                return response()->json([
-                    'error' => 'Une ou plusieurs séances existe déjà'
-                ], 403);
-            }
-
             $seance = Seance::updateOrCreate(
+                [
+                    'source_name' => $sourceName,
+                    'source_id' => $sourceId
+                ],
                 [
                     'intitule' => $seanceData['intitule'],
                     'duration' => $seanceData['duration'],
                     'seance_id_externe' => $seanceData['seance_id_externe'],
                     'matiere_id' => $seanceData['matiere_id'],
                     'dabte_debut' => $dateDebut,
-                    'date_fin' => $dateFin,
-                    'source_id' => $sourceId
-                ],
-                [
-                    'source_name' => $sourceName,
-                    'source_id' => $sourceId
+                    'date_fin' => $dateFin
                 ]
             );
 
-            $seance->enseignants()->attach($seanceData['enseignant_id']);
+            $seance->enseignants()->sync([$seanceData['enseignant_id']]);
             $seance->apprenants()->sync($seanceData['apprenants']);
-
             $createdSeances[] = $seance;
         }
 
         $seanceRessource = SeanceResource::collection($createdSeances);
+
         return response()->json([
-            'error' => 'Séances créées avec succès',
+            'message' => 'Séances créées avec succès',
             'seances' => $seanceRessource
         ], 201);
     }
+    */
+
+    public function createSeancesDate(Request $request)
+    {
+        $validateData = $request->validate([
+            'date_debut' => 'required|date',
+            'date_fin' => 'required|date',
+            'seances' => 'required|array',
+            'seances.*.intitule' => 'required|string',
+            'seances.*.matiere_id' => 'required|integer',
+            'seances.*.duration' => 'required|integer',
+            'seances.*.seance_id_externe' => 'required|string',
+            'seances.*.dateDebut' => 'required|date',
+            'seances.*.dateFin' => 'required|date',
+            'seances.*.id' => 'required|integer',
+            'seances.*.enseignants' => 'required|array',
+            'seances.*.enseignants.*.*' => 'required|integer|exists:enseignants,id',
+            'seances.*.apprenants' => 'required|array',
+            'seances.*.apprenants.*.*' => 'required|integer|exists:apprenants,id'
+        ]);
+
+        $dateDebut = Carbon::parse($validateData['date_debut'])->startOfDay()->timestamp;
+        $dateFin = Carbon::parse($validateData['date_fin'])->endOfDay()->timestamp;
+
+        $existSeances = Seance::whereBetween('dabte_debut', [$dateDebut, $dateFin])->get();
+        $newSeances = collect($validateData['seances'])->pluck('id')->toArray();
+        //dd($newSeances);
+
+        $deleteSeance = $existSeances->filter(function ($seance) use ($newSeances){
+            return !in_array($seance->id, $newSeances);
+        });
+
+        foreach ($deleteSeance as $seance){
+            $seance->enseignant()->detach();
+            $seance->apprenants()->detach();
+            $seance->delete();
+        }
+
+        $createSeances = [];
+
+        foreach ($validateData['seances'] as $seanceData){
+            $sourceName = $request->get('source_name');
+            $sourceId = $seanceData['id'];
+
+            $date_debut_seance = Carbon::parse($seanceData['dateDebut'])->timestamp;
+            $date_fin_seance = Carbon::parse($seanceData['dateFin'])->timestamp;
+
+            $seance = Seance::updateOrCreate(
+                [
+                    'source_id' => $sourceId,
+                    'source_name' => $sourceName
+                ],
+                [
+                    'intitule' => $seanceData['intitule'],
+                    'duration' => $seanceData['duration'],
+                    'matiere_id' => $seanceData['matiere_id'],
+                    'seance_id_externe' => $seanceData['seance_id_externe'],
+                    'dabte_debut' => $date_debut_seance,
+                    'date_fin' => $date_fin_seance
+                ]
+            );
+            $seance->enseignant()->sync($seanceData['enseignants']);
+            $seance->apprenants()->sync($seanceData['apprenants']);
+
+            $createSeances[] = $seance;
+        }
+
+        $seanceRessource = SeanceResource::collection($createSeances);
+
+        return response()->json([
+            'message' => 'Seance créer avec succès',
+            'seances' => $seanceRessource
+        ], 201);
+    }
+
 
     /**
      * @param $seance_id
@@ -224,6 +289,44 @@ class FluxController extends Controller
 
         return response()->json([
             'message' => 'Séance supprimer avec succès'
+        ], 200);
+    }
+
+    public function deleteSeancesDate(Request $request)
+    {
+        $validateData = $request->validate([
+            'seances' => 'required|array',
+            'seances.*.date_debut' => 'required|date',
+            'seances.*.date_fin' => 'required|date'
+        ]);
+
+        $sourceName = $request->get('source_name');
+
+        foreach ($validateData['seances'] as $seanceData) {
+            $dateDebut = Carbon::parse($seanceData['date_debut'])->startOfDay()->timestamp;
+            $dateFin = Carbon::parse($seanceData['date_fin'])->endOfDay()->timestamp;
+
+            $existSeances = Seance::where('source_name', $sourceName)
+                ->whereBetween('dabte_debut', [$dateDebut, $dateFin])
+                ->get();
+
+            //dd($existSeances);
+
+            if ($existSeances->isEmpty()) {
+                return response()->json([
+                    'error' => "Aucune séance n'est comprise dans cette intervalle de dates pour le source_name spécifié"
+                ], 403);
+            }
+
+            foreach ($existSeances as $seanceDatas) {
+                $seanceDatas->enseignant()->detach();
+                $seanceDatas->apprenants()->detach();
+                $seanceDatas->delete();
+            }
+        }
+
+        return response()->json([
+            'message' => 'Séances supprimées',
         ], 200);
     }
 
@@ -325,6 +428,50 @@ class FluxController extends Controller
             'message' => 'Enseignant créer',
             'enseignants' => $createEnseignant
         ],201);
+    }
+
+
+    public function updataEnseignant(Request $request)
+    {
+        $validateData = $request->validate([
+            'enseignants' => 'required|array',
+            'enseignants.*.nom' => 'required|string',
+            'enseignants.*.prenom' => 'required|string',
+            'enseignants.*.enseignant_id_externe' => 'required|string',
+            'enseignants.*.email' => 'required|string',
+            'enseignants.*.id' => 'required|integer'
+        ]);
+
+        $enseignantIds = collect($validateData['enseignants'])->pluck('id')->toArray();
+
+        $deleteEnseignant = Enseignant::whereNotIn('source_id',$enseignantIds)->get();
+        foreach ($deleteEnseignant as $enseignant){
+            $enseignant->seances()->detach();
+            $enseignant->delete();
+        }
+        $updateEnseignant = [];
+
+        foreach ($validateData['enseignants'] as $enseignantData){
+            $sourceName = $request->get('source_name');
+            $sourceId = $enseignantData['id'];
+            $enseignant = Enseignant::updateOrCreate(
+                [
+                    'source_name' => $sourceName,
+                    'source_id' => $sourceId
+                ],
+                [
+                    'nom' => $enseignantData['nom'],
+                    'prenom' => $enseignantData['prenom'],
+                    'email' => $enseignantData['email']
+                ]
+            );
+            $updateEnseignant[] =$enseignant;
+        }
+        $enseignantRessource = EnseignantResource::collection($updateEnseignant);
+        return response()->json([
+            'message' => "Enseignant mis à jour",
+            'enseignant' => $enseignantRessource
+        ], 200);
     }
 
     /**
@@ -451,43 +598,46 @@ class FluxController extends Controller
             'nom' => 'required|string',
             'ine' => 'required|string',
             'prenom' => 'required|string',
-            'email' => 'required|string',
+            'email' => 'required|string|email',
             'id' => 'required|integer'
         ]);
 
         $sourceName = $request->get('source_name');
         $sourceId = $validateData['id'];
 
-        $existeApprenant = Apprenant::where('source_name', $sourceName)
-                                ->where('source_id', $sourceId)
-                                ->first();
+        $user = User::where('email', $validateData['email'])->first();
 
-        if ($existeApprenant){
-            return response()->json([
-                'error' => 'Apprenant existe déjà'
-            ], 400);
+        if (!$user) {
+            $user = User::create([
+                'name' => $validateData['prenom'] . ' ' . $validateData['nom'],
+                'email' => $validateData['email'],
+                'password' => 'test'
+            ]);
         }
+
 
         $apprenant = Apprenant::updateOrCreate(
             [
-            'nom' => $validateData['nom'],
-            'ine' => $validateData['ine'],
-            'prenom' => $validateData['prenom'],
-            'email' => $validateData['email']
-            ],
-            [
                 'source_name' => $sourceName,
                 'source_id' => $sourceId
+            ],
+            [
+                'nom' => $validateData['nom'],
+                'ine' => $validateData['ine'],
+                'prenom' => $validateData['prenom'],
+                'email' => $validateData['email'],
+                'user_id' => $user->id
             ]
         );
 
         $apprenantRessource = new ApprenantResource($apprenant);
+        //dd($apprenantRessource);
         return response()->json([
-            'message' => 'Enseignant créer avec succès',
-            'enseignant' => $apprenantRessource
-        ],201);
-
+            'message' => 'Apprenant créé avec succès',
+            'apprenant' => $apprenantRessource
+        ], 201);
     }
+
 
     public function createApprenants(Request $request)
     {
@@ -515,13 +665,14 @@ class FluxController extends Controller
                     'error' => 'Une ou plusieurs apprenants existe déjà'
                 ], 403);
             }
-            $apprenants = Apprenant::updateOrCreate([
-                'nom' => $apprenantData['nom'],
-                'prenom' => $apprenantData['prenom'],
-                'ine' => $apprenantData['ine'],
-                'email' => $apprenantData['email'],
-                'id' => $apprenantData['id']
-            ],
+            $apprenants = Apprenant::updateOrCreate(
+                [
+                    'nom' => $apprenantData['nom'],
+                    'prenom' => $apprenantData['prenom'],
+                    'ine' => $apprenantData['ine'],
+                    'email' => $apprenantData['email'],
+                    'id' => $apprenantData['id']
+                ],
                 [
                     'source_name' => $sourceName,
                     'source_id' =>$sourceId
@@ -535,6 +686,52 @@ class FluxController extends Controller
         ],201 );
     }
 
+    public function updateApprenant(Request $request)
+    {
+        $validateData = $request->validate([
+            'apprenants' => 'required|array',
+            'apprenants.*.nom' => 'required|string',
+            'apprenants.*.prenom' => 'required|string',
+            'apprenants.*.ine' => 'required|string',
+            'apprenants.*.email' => 'required|string',
+            'apprenants.*.id' => 'required|integer'
+        ]);
+
+        $apprenantIds = collect($validateData['apprenants'])->pluck('id')->toArray();
+
+        $deleteApprenant = Apprenant::whereNotIn('source_id', $apprenantIds)->get();
+        //dd($deleteApprenant);
+        foreach ($deleteApprenant as $apprenant){
+            $apprenant->seances()->detach();
+            $apprenant->delete();
+        }
+
+        $updateApprenant = [];
+
+        foreach ($validateData['apprenants'] as $apprenantData){
+            $sourceName = $request->get('source_name');
+            $sourceId = $apprenantData['id'];
+            $apprenant = Apprenant::updateOrCreate(
+                [
+                    'source_name' => $sourceName,
+                    'source_id' => $sourceId
+                ],
+                [
+                    'nom' => $apprenantData['nom'],
+                    'prenom' => $apprenantData['prenom'],
+                    'ine' => $apprenantData['ine'],
+                    'email' => $apprenantData['email']
+                ]
+            );
+            $updateApprenant [] = $apprenant;
+        }
+
+        $apprenantRessource = ApprenantResource::collection($updateApprenant);
+        return response()->json([
+            'message' => "Apprenant mis à jour",
+            'apprenant' => $apprenantRessource
+        ], 200);
+    }
 
     /**
      * @param $apprenant_id

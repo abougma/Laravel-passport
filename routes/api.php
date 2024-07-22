@@ -47,16 +47,18 @@ Route::middleware('client', 'getClient')->group(function (){
     //Séances
     Route::post('/seance', [FluxController::class, 'createSeance']);
     Route::post('/seances', [FluxController::class, 'createSeances']);
+    Route::post('/seances/date', [FluxController::class, 'createSeancesDate']);
 
     Route::get('/seance/{seance_id}', [FluxController::class, 'getSeance']);
     Route::get('/seances', [FluxController::class, 'getSeances']);
     Route::get('/seances/{seance_id}/enseignants/apprenants', [FluxController::class, 'getSeanceAndEnseignantAndApprenants']);
 
     Route::delete('/seance/{seance_id}', [FluxController::class, 'deleteSeance']);
-
+    Route::delete('/seances/date/', [FluxController::class, 'deleteSeancesDate']);
     //Enseignants
     Route::post('/enseignant', [FluxController::class, 'createEnseignant']);
     Route::post('/enseignants', [FluxController::class, 'createEnseignants']);
+    Route::post('/enseignants/update', [FluxController::class, 'updataEnseignant']);
 
     Route::get('/enseignant/{enseignant_id}', [FluxController::class, 'getEnseignant']);
     Route::get('/enseignants', [FluxController::class, 'getEnseignants']);
@@ -70,6 +72,7 @@ Route::middleware('client', 'getClient')->group(function (){
     //Apprenants
     Route::post('/apprenant', [FluxController::class, 'createApprenant']);
     Route::post('/apprenants', [FluxController::class, 'createApprenants']);
+    Route::post('/apprenant/update', [FluxController::class, 'updateApprenant']);
 
     Route::get('/apprenant/{apprenant_id}', [FluxController::class, 'getApprenant']);
     Route::get('/apprenants', [FluxController::class, 'getApprenants']);

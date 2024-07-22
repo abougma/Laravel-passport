@@ -18,7 +18,7 @@ class SeanceResource extends JsonResource
             'id' => $this->id,
             'intitule' => $this->intitule,
             'matiere_id' => $this->matiere_id,
-            'date_debut' => $this->date_debut,
+            'date_debut' => $this->dabte_debut,
             'date_fin' => $this->date_fin,
             'duration' => $this->duration,
             'seance_id_externe' => $this->seance_id_externe,

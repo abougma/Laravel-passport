@@ -19,7 +19,8 @@ class Apprenant extends Model
         'prenom',
         'email',
         'source_name',
-        'source_id'
+        'source_id',
+        'user_id'
     ];
 
     public function seances()
