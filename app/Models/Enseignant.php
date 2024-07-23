@@ -13,12 +13,12 @@ class Enseignant extends Model
     use EagerLoadPivotTrait;
 
     protected $fillable = [
-        'enseignant_id_externe',
         'nom',
         'prenom',
         'email',
         'source_name',
-        'source_id'
+        'source_id',
+        'user_id'
     ];
 
    /* public function seances()
@@ -34,10 +34,6 @@ class Enseignant extends Model
 
     }
 
-    public function getSeancePagination($perPage = 1)
-    {
-        return $this->seances()->paginate($perPage);
-    }
 
     public function emargements()
     {

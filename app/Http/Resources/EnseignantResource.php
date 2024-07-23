@@ -20,7 +20,8 @@ class EnseignantResource extends JsonResource
             'prenom' => $this->prenom,
             'email' => $this->email,
             'source_name' => $this->source_name,
-            'source_id' => $this->source_id
+            'source_id' => $this->source_id,
+            'user_id' => $this->user_id
         ];
     }
 }
