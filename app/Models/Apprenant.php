@@ -33,4 +33,5 @@ class Apprenant extends Model
        return $this->morphMany(Emargement::class, 'objet');
     }
 
+
 }

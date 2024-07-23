@@ -481,10 +481,12 @@ class FluxController extends Controller
 
             $updateEnseignant[] =$enseignant;
         }
+        $enseignantUpdateOrCreate [] = count($updateEnseignant);
         $enseignantRessource = EnseignantResource::collection($updateEnseignant);
         return response()->json([
             'message' => "Enseignant créer ou  mis à jour avec succès",
-            'enseignant' => $enseignantRessource
+            'enseignant' => $enseignantRessource,
+            'enseignant_update_or_create' => $enseignantUpdateOrCreate
         ], 200);
     }
 
@@ -509,8 +511,17 @@ class FluxController extends Controller
         ], 200);
     }
 
-    public function getEnseignants(){
-        $enseignants = Enseignant::paginate(3);
+    public function getEnseignants(Request $request){
+
+        $request->validate([
+            'perPage' => 'nullable|numeric'
+        ]);
+        if ($request->perPage){
+            $perPage = intval($request->perPage);
+        }else{
+            $perPage = 3;
+        }
+        $enseignants = Enseignant::paginate($perPage);
 
         if (!$enseignants){
             return response()->json([
@@ -618,7 +629,7 @@ class FluxController extends Controller
             'nom' => 'required|string',
             'ine' => 'required|string',
             'prenom' => 'required|string',
-            'email' => 'required|string|email',
+            'email' => 'required|string|email|max:255|unique:users',
             'id' => 'required|integer'
         ]);
 
@@ -656,6 +667,7 @@ class FluxController extends Controller
         ], 201);
     }
 
+
     public function updateApprenant(Request $request)
     {
         $validateData = $request->validate([
@@ -663,7 +675,7 @@ class FluxController extends Controller
             'apprenants.*.nom' => 'required|string',
             'apprenants.*.prenom' => 'required|string',
             'apprenants.*.ine' => 'required|string',
-            'apprenants.*.email' => 'required|string',
+            'apprenants.*.email' => 'required|email',
             'apprenants.*.id' => 'required|integer'
         ]);
 
@@ -706,12 +718,16 @@ class FluxController extends Controller
             $updateApprenant [] = $apprenant;
         }
 
+        $apprenantUpdateOrCreate [] = count($updateApprenant);
+
         $apprenantRessource = ApprenantResource::collection($updateApprenant);
         return response()->json([
             'message' => "Apprenant créer ou mis à jour avec succès",
-            'apprenant' => $apprenantRessource
+            'apprenant' => $apprenantRessource,
+            'apprenant_update_or_create' => $apprenantUpdateOrCreate
         ], 200);
     }
+
 
     /**
      * @param $apprenant_id
@@ -736,9 +752,17 @@ class FluxController extends Controller
             'apprenant' => $apprenantRessource
         ],201);
     }
-    public function getApprenants()
+    public function getApprenants(Request $request)
     {
-        $apprenants = Apprenant::paginate(3);
+        $request->validate([
+            'perPage' => 'nullable|numeric'
+        ]);
+        if ($request->perPage){
+            $perPage = intval($request->perPage);
+        }else{
+            $perPage = 3;
+        }
+        $apprenants = Apprenant::paginate($perPage);
 
         if (!$apprenants) {
             return response()->json([
