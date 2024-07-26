@@ -18,14 +18,16 @@ class SeanceResource extends JsonResource
             'id' => $this->id,
             'intitule' => $this->intitule,
             'matiere_id' => $this->matiere_id,
-            'date_debut' => $this->dabte_debut,
-            'date_fin' => $this->date_fin,
+            'date' => $this->dabte_debut->format('Y-m-d'),
+            'heure_debut' => $this->dabte_debut->format('H:i'),
+            'heure_fin' => $this->date_fin->format('H:i'),
             'duration' => $this->duration,
             'seance_id_externe' => $this->seance_id_externe,
             'source_name' => $this->source_name,
-            'source_id' => $this->source_id
-            //'apprenants' => ApprenantResource::collection($this->apprenants),
-            //'enseignant' => EnseignantResource::collection($this->enseignant),
+            'source_id' => $this->source_id,
+            'code' => $this->code,
+            'apprenants' => ApprenantResource::collection($this->apprenants),
+            'enseignant' => EnseignantResource::collection($this->enseignant),
         ];
     }
 }

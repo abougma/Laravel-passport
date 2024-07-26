@@ -39,7 +39,6 @@ class FluxController extends Controller
             'date_debut' => 'required|date',
             'date_fin' => 'required|date',
             'duration' => 'required|integer',
-            'seance_id_externe' => 'required|string',
             'matiere_id' => 'required|integer',
             'enseignants' => 'required|array',
             'enseignant_id' => 'integer|exists:enseignants,id',
@@ -60,8 +59,7 @@ class FluxController extends Controller
                 'matiere_id' => $validateData['matiere_id'],
                 'dabte_debut' => $dateDebut,
                 'date_fin' => $dateFin,
-                'duration' => $validateData['duration'],
-                'seance_id_externe' => $validateData['seance_id_externe']
+                'duration' => $validateData['duration']
             ],
             [
                 'source_name' => $sourceName,
@@ -142,6 +140,7 @@ class FluxController extends Controller
 
     public function createSeancesDate(Request $request)
     {
+        //
         $validateData = $request->validate([
             'date_debut' => 'required|date',
             'date_fin' => 'required|date',
@@ -149,15 +148,15 @@ class FluxController extends Controller
             'seances.*.intitule' => 'required|string',
             'seances.*.matiere_id' => 'required|integer',
             'seances.*.duration' => 'required|integer',
-            'seances.*.seance_id_externe' => 'required|string',
             'seances.*.dateDebut' => 'required|date',
             'seances.*.dateFin' => 'required|date',
             'seances.*.id' => 'required|integer',
             'seances.*.enseignants' => 'required|array',
-            'seances.*.enseignants.*.*' => 'required|integer|exists:enseignants,id',
+            'seances.*.enseignants.*' => 'required|integer|exists:enseignants,source_id',
             'seances.*.apprenants' => 'required|array',
-            'seances.*.apprenants.*.*' => 'required|integer|exists:apprenants,id'
+            'seances.*.apprenants.*' => 'required|integer|exists:apprenants,source_id'
         ]);
+        //dd($request->input);
 
         $dateDebut = Carbon::parse($validateData['date_debut'])->startOfDay()->timestamp;
         $dateFin = Carbon::parse($validateData['date_fin'])->endOfDay()->timestamp;
@@ -193,13 +192,21 @@ class FluxController extends Controller
                     'intitule' => $seanceData['intitule'],
                     'duration' => $seanceData['duration'],
                     'matiere_id' => $seanceData['matiere_id'],
-                    'seance_id_externe' => $seanceData['seance_id_externe'],
                     'dabte_debut' => $date_debut_seance,
                     'date_fin' => $date_fin_seance
                 ]
             );
-            $seance->enseignant()->sync($seanceData['enseignants']);
-            $seance->apprenants()->sync($seanceData['apprenants']);
+            $array = Apprenant::whereIn('source_id', $seanceData['apprenants'])->get()
+                ->pluck('id')
+                ->toArray();
+            //dd($array, $seanceData);
+
+            $arrayEnseignant = Enseignant::whereIn('source_id', $seanceData['enseignants'])->get()
+                ->pluck('id')
+                ->toArray();
+
+            $seance->enseignant()->sync($arrayEnseignant);
+            $seance->apprenants()->sync($array);
 
             $createSeances[] = $seance;
         }

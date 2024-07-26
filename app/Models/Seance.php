@@ -18,11 +18,15 @@ class Seance extends Model
         'dabte_debut',
         'date_fin',
         'duration',
-        'seance_id_externe',
         'source_name',
-        'source_id'
+        'source_id',
+        'code'
     ];
 
+    protected $casts = [
+        'dabte_debut' => "datetime:Y-m-d",
+        'date_fin' => 'datetime: Y-m-d'
+    ];
     public function enseignant()
     {
         return $this->belongsToMany(Enseignant::class);
